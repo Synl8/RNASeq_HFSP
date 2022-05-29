@@ -94,6 +94,7 @@ def filter():
             else:
                 activity_des[name_des] = 1
 
+    saveData({"data":(sub_seq_list, ref_seq_list, res_act)}, "save.json")
     return activity_des, sub_seq_list, ref_seq_list, res_act
 
 def printActiveVariant(activity_des):
@@ -142,8 +143,13 @@ def alignVariant(variantName, activity_dict, sub_seq_list, ref_seq_list, res_act
 def main():
     print("applying filter")
     t1 = time.time()
-    activity_dict, sub_seq_list, ref_seq_list, res_act = filter()
+    if not os.path.isfile("save.json"):
+        activity_dict, sub_seq_list, ref_seq_list, res_act = filter()
+    else : 
+        data = loadData("save.json")
+        activity_dict, sub_seq_list, ref_seq_list, res_act = data["data"]
     t2 = time.time()
+
     print("filtering finish in " + str(t2-t1) + " seconds")
     action = askVariantToCheck(activity_dict, sub_seq_list, ref_seq_list, res_act)
     while action != "exit":
