@@ -1,4 +1,4 @@
-import pathSetting
+from pathSetting import *
 from collections import defaultdict
 from numpy import mean, log10, std, linspace
 import re, sys, os, subprocess, time
