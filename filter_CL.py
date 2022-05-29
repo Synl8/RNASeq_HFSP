@@ -1,6 +1,6 @@
 from pathSetting_CL import *
 from collections import defaultdict
-from numpy import mean, log10, std, linspace
+from numpy import append, mean, log10, std, linspace
 import re, sys, os, subprocess, time
 from multiprocessing import Pool
 from Bio import SeqIO
@@ -88,11 +88,7 @@ def filter():
     nsu_count_des = {}
 
     for name, seq in sel_nsu.items():
-        name_des = name.split("|")[1]
-        if name_des in nsu_count_des.keys():
-            nsu_count_des[name_des] += 1
-        else:
-            nsu_count_des[name_des] = 1
+        nsu_count_des[name] = len(seq)
 
 
     for (name, seq), ref_seq, act in zip(sub_seq_list, ref_seq_list, res_act):
@@ -104,9 +100,29 @@ def filter():
                 activity_des[name_des] = 1
 
             
-    csvData = {"referenceName":ref_seq_list, "nsuCountRead":nsu_count_des.values(), "actif_count": activity_des.values(), "activityRatio": activity_des.values() / nsu_count_des.values()}
+    ratioList = []
+    nbNsuList = []
+    nbActifList = []
+    nameList = list(activity_des.keys())
+
+    for name in nsu_count_des.keys():
+        if name not in nameList : nameList.append(name)
+
+    for name in nameList:
+        nbActif =0
+        nbNsu = 0
+        ratio = pd.NA
+        if name in activity_des.keys() : nbActif= activity_des[name]
+        if name in nsu_count_des.keys() : nbNsu= nsu_count_des[name]
+        if nbActif > 0 and nbNsu > 0 : ratio = nbActif / nbNsu
+        nbActifList.append(nbActif)
+        nbNsuList.append(nbNsu)
+        ratioList.append(ratio)
+
+    csvData = {"referenceName":nameList, "nsuCountRead":nbNsuList, "actif_count": nbActifList, "activityRatio": ratioList}
     df = pd.DataFrame.from_dict(csvData)
-    df.to_csv(databaseFilePath.split(".")[0].replace(".", "") + "_activity.csv", sep=",") 
+    if not os.path.isdir("results_csv") : os.makedirs("results_csv")
+    df.to_csv("results_csv/"+databaseFilePath.split(".")[0].replace(".", "") + "_activity.csv", index=False,   sep=",")
     saveData({"data":(activity_des, sub_seq_list, ref_seq_list, res_act)}, "save.json")
     return activity_des, sub_seq_list, ref_seq_list, res_act
 
