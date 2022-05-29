@@ -8,6 +8,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import pairwise2
 import json
+import pandas as pd
 
 
 ################################################################################
@@ -84,6 +85,15 @@ def filter():
                                 zip(sub_seq_list, ref_seq_list)))
 
     activity_des = {}
+    nsu_count_des = {}
+
+    for name, seq in sel_nsu:
+        name_des = name.split("|")[1]
+        if name_des in nsu_count_des.keys():
+            nsu_count_des[name_des] += 1
+        else:
+            nsu_count_des[name_des] = 1
+
 
     for (name, seq), ref_seq, act in zip(sub_seq_list, ref_seq_list, res_act):
         name_des = name.split("|")[1]
@@ -93,6 +103,10 @@ def filter():
             else:
                 activity_des[name_des] = 1
 
+            
+    csvData = {"referenceName":ref_seq_list, "nsuCountRead":nsu_count_des.values(), "actif_count": activity_des.values(), "activityRatio": activity_des.values() / nsu_count_des.values()}
+    df = pd.DataFrame.from_dict(csvData)
+    df.to_csv(databaseFilePath.split(".")[0].replace(".", "") + "_activity.csv", sep=",") 
     saveData({"data":(activity_des, sub_seq_list, ref_seq_list, res_act)}, "save.json")
     return activity_des, sub_seq_list, ref_seq_list, res_act
 
