@@ -17,6 +17,17 @@ databaseFilePath, variantReadFilePath, nsuFilePath, mafftPath = getFilePath()
 ################################################################################
 
 # functions
+
+def saveData(dict, file):
+    data_file = open(file, "w")
+    json.dump(dict, data_file)
+    data_file.close()
+
+def loadData(file):
+    with open(file) as json_file:
+        data = json.load(json_file)
+        return data
+
 def read_fasta(infile):
     "read fasta files, return a dictionary"
     results = {}
@@ -81,6 +92,7 @@ def filter():
             else:
                 activity_des[name_des] = 1
 
+    saveData({"data":(activity_des, sub_seq_list, ref_seq_list, res_act)}, "save.json")
     return activity_des, sub_seq_list, ref_seq_list, res_act
 
 def printActiveVariant(activity_des):
@@ -133,7 +145,11 @@ def alignVariant(variantName, activity_dict, sub_seq_list, ref_seq_list, res_act
 def main():
     print("Applying filter.py")
     t1 = time.time()
-    activity_dict, sub_seq_list, ref_seq_list, res_act = filter()
+    if not os.path.isfile("save.json"):
+        activity_dict, sub_seq_list, ref_seq_list, res_act = filter()
+    else : 
+        data = loadData("save.json")
+        activity_dict, sub_seq_list, ref_seq_list, res_act = data["data"]
     t2 = time.time()
     print("Filtering finished in " + str(t2-t1) + " seconds.")
     action = askVariantToCheck(activity_dict, sub_seq_list, ref_seq_list, res_act)
