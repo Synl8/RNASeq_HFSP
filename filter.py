@@ -7,7 +7,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import pairwise2
-
+import json
 
 
 ################################################################################
@@ -17,6 +17,19 @@ databaseFilePath, variantReadFilePath, nsuFilePath, mafftPath = getFilePath()
 
 ################################################################################
 # functions
+
+
+
+def saveData(dict, file):
+    data_file = open(file, "w")
+    json.dump(dict, data_file)
+    data_file.close()
+
+def loadData(file):
+    with open(file) as json_file:
+        data = json.load(json_file)
+        return data
+
 def read_fasta(infile):
     "read fasta files, return a dictionary"
     results = {}
@@ -106,8 +119,9 @@ def alignVariant(variantName, activity_dict, sub_seq_list, ref_seq_list, res_act
             if len(recordList) == 0: recordList.append(SeqRecord(Seq(ref_seq), id = variantName, description="", name=""))
             recordList.append(SeqRecord(Seq(seq), id = name, description="", name=""))
 
-    fastaFile = variantName+ ".fa"
-    alignedFile = variantName+ "_aln.fa"
+    if not os.path.isdir("results") : os.makedirs("results")
+    fastaFile ="results/" + variantName+ ".fa"
+    alignedFile = "results/" + variantName+ "_aln.fa"
     SeqIO.write(recordList , fastaFile, "fasta")
     mafft_cline = mafftPath+ " --auto --out "+ os.path.abspath(alignedFile) + " " + os.path.abspath(fastaFile)
     print("Sometimes the subproccess get locked for no reason. If it happens, please quit and run the following command manually :")
@@ -133,7 +147,9 @@ def main():
     print("filtering finish in " + str(t2-t1) + " seconds")
     action = askVariantToCheck(activity_dict, sub_seq_list, ref_seq_list, res_act)
     while action != "exit":
+        
         action = askVariantToCheck(activity_dict, sub_seq_list, ref_seq_list, res_act)
+        if action == "exit" : return
 
 
 if __name__ == '__main__':
