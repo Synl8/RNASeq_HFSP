@@ -59,8 +59,8 @@ def test_activity(args):
 
 
 # usefull global variable 
-all_designs = {n.split()[0]: seq for n, seq in read_fasta(databaseFilePath).items()}
-sel_fa_nsu = {n.split()[0]: s for n, s in read_fasta(variantReadFilePath).items()}
+# all_designs = {n.split()[0]: seq for n, seq in read_fasta(databaseFilePath).items()}
+# sel_fa_nsu = {n.split()[0]: s for n, s in read_fasta(variantReadFilePath).items()}
 sel_nsu, sel_sub = defaultdict(lambda: []), defaultdict(lambda: [])
 
 def filter():
@@ -158,5 +158,38 @@ def main():
         if action == "exit" : return
 
 
+def cutFasta(fastaFile, fasta2):
+    listRecord = []
+    sousPool1 = []
+    for i in range(100, 200):
+        sousPool1.append("DCA_TM_" + str(i))
+
+    sousPool2 =[]
+    for i in range(100, 200):
+        sousPool2.append("MIN_CONST_" + str(i))
+    sousPool2.append("MIN_CONST_210")
+    sousPool2.append("AZO_RM_30_mut_632")
+
+    listId = []
+    for record in SeqIO.parse(fastaFile, "fasta"):
+        if str(record.id).split("|")[1] in sousPool1:
+            listRecord.append(record)
+            listId.append(str(record.id).split("|")[1])
+
+        elif str(record.id).split("|")[1] in sousPool2:
+            listRecord.append(record)
+            listId.append(str(record.id).split("|")[1])
+
+    SeqIO.write(listRecord, "testFile1.fa", "fasta")
+    listRecord= []
+    for record in SeqIO.parse(fasta2, "fasta"):
+        if str(record.id).split("|")[1] in listId: listRecord.append(record)
+
+    SeqIO.write(listRecord, "testFile2.fa", "fasta")
+    print("finish")
+
+
+
 if __name__ == '__main__':
-    main()
+    # main()
+    cutFasta("L422T14_cl.fa", "L422T13_cl.fa")
