@@ -1,0 +1,839 @@
+* Overview
+
+Designs:
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+| Status | Safe production                                                 | ID            | NB_ seq |    |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+| done   | DCA TM with normal number of mutations                          | DCA_TM        |    5000 |    |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+|        | Add diversity from                                              |               |         |    |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+| done   | More weight on 2ndary structure                                 | DCA_SB_50     |     988 |    |
+| done   | More weight on 2ndary structure (more structure)                | DCA_SB_75     |     828 |    |
+| done   | Randomize a few positions from a subset of sequences (100) DCA1 | DCA_R         |    1000 |    |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+|        | Negative control                                                |               |         |    |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+| done   | From Azo: add random mutation with MSA profile distribution.    | AZO_RM        |    1000 | x2 |
+| done   | From Azo: add random (uniform) mutation (30 mutations).         | AZO_RU        |    1000 |    |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+|        | Tertiary constraints                                            |               |         |    |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+| done   |                                                                 | FULL_3D_CONST |    1000 | ?  |
+| done   |                                                                 | MIN_CONST     |    1000 | ?  |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+|        | Natural GII                                                     |               |         |    |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+| todo   | From Rfam                                                       | NAT_GII       |     184 |    |
+|--------+-----------------------------------------------------------------+---------------+---------+----|
+
+- Add more sequences from the 2ndary structure pool (up to 100 mutations).
+- Add a pool where tertiary interaction where saved.
+
+* Analysis
+
+|-------------------------------------+--------|
+| Type of analysis                    | output |
+|-------------------------------------+--------|
+| Composition                         |        |
+| position mutated                    |        |
+| statistical correlation (f_i, f_ij) |        |
+| logos                               |        |
+|-------------------------------------+--------|
+
+** Mutated positions
+*** DCA_TM
+
+#+begin_src python :results output :file tmp.png
+from src.stat import composition
+from src.seq_io import read_output
+from matplotlib import pyplot as plt
+from numpy import arange
+plt.rcParams["font.family"] = "serif"
+
+azoarcus_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+azoarcus_str = "(((((((..((....)).)))))))...((((((....((((((...((...((((((....))))))..))...))))))(((...(.((((((....)))))).)..)))...[.[[[[[...))))))((((...(((....)))..))))......]]]]]]..((.(((((....))))).....))."
+lseq = len(azoarcus_seq)
+all_prof = []
+
+msa_seq = [l.strip() for l in open("./data/azo_rfam_aln.seq")]
+msa_comp = composition([seq for seq in msa_seq])
+msa_prof = [sum(c for n, c in pos.items() if n not in [ref, "-"]) for pos, ref in zip(msa_comp, azoarcus_seq)]
+
+tmp = [0 for _ in range(lseq)]
+for i in range(1, 11):
+    samp = read_output(f"./DCA_TM/sample_{i}_t0.1_2.out")
+    compo = composition([seq for seq in samp])
+    mut_prof = [sum(c for n, c in pos.items() if n != ref) for pos, ref in zip(compo, azoarcus_seq)]
+    tmp = [el + el_ for el, el_ in zip(tmp, mut_prof)]
+    all_prof += [tmp]
+
+fig = plt.figure(1)
+designed_f = fig.add_subplot(211)
+msa_f = fig.add_subplot(212)
+width = 0.4
+
+ax3 = designed_f.twiny()
+ax3.xaxis.set_ticks(range(lseq))
+ax3.xaxis.set_ticklabels(azoarcus_str.replace('-', ''), fontsize=10)
+
+for pi, prof in zip(range(1, 11)[::-1], all_prof[::-1]):
+    designed_f.bar(arange(lseq), height=prof, label=pi, width=width)
+designed_f.legend(loc="upper right", fontsize=5, ncol=10)
+msa_f.bar(arange(lseq), height=msa_prof, label=pi, width=width)
+designed_f.set_xlim(0, lseq)
+msa_f.set_xlim(0, lseq)
+plt.savefig("./img/mutated_pos_tm.png", dpi=300)
+plt.show()
+#+end_src
+
+#+RESULTS:
+
+*** DCA_SB
+
+#+begin_src python :results output :file tmp.png
+from src.stat import composition
+from src.seq_io import read_output
+from matplotlib import pyplot as plt
+from numpy import arange
+plt.rcParams["font.family"] = "serif"
+
+azoarcus_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+azoarcus_str = "(((((((..((....)).)))))))...((((((....((((((...((...((((((....))))))..))...))))))(((...(.((((((....)))))).)..)))...[.[[[[[...))))))((((...(((....)))..))))......]]]]]]..((.(((((....))))).....))."
+lseq = len(azoarcus_seq)
+all_prof = []
+weights = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25]
+
+msa_seq = [l.strip() for l in open("./data/azo_rfam_aln.seq")]
+msa_comp = composition([seq for seq in msa_seq])
+msa_prof = [sum(c for n, c in pos.items() if n not in [ref, "-"]) for pos, ref in zip(msa_comp, azoarcus_seq)]
+
+tmp = [0 for _ in range(lseq)]
+for i in range(1, 7):
+  samp = read_output(f"./DCA_SB/sample_{i}.out")
+  compo = composition([seq for seq in samp])
+  mut_prof = [sum(c for n, c in pos.items() if n != ref) for pos, ref in zip(compo, azoarcus_seq)]
+  tmp = [el + el_ for el, el_ in zip(tmp, mut_prof)]
+  all_prof += [tmp]
+
+fig = plt.figure(1)
+designed_f = fig.add_subplot(211)
+msa_f = fig.add_subplot(212)
+width = 0.4
+
+ax3 = designed_f.twiny()
+ax3.xaxis.set_ticks(range(lseq))
+ax3.xaxis.set_ticklabels(azoarcus_str.replace('-', ''), fontsize=10)
+
+for pi, prof in zip(range(1, 7)[::-1], all_prof[::-1]):
+  designed_f.bar(arange(lseq), height=prof, label=weights[pi-1], width=width)
+designed_f.legend(fontsize=5)
+msa_f.bar(arange(lseq), height=msa_prof, label=pi, width=width)
+designed_f.set_xlim(0, lseq)
+msa_f.set_xlim(0, lseq)
+# plt.savefig("./img/mutated_pos_sb.png", dpi=300)
+plt.show()
+#+end_src
+
+#+RESULTS:
+
+** Statistical correlation
+
+#+begin_src python :results output
+from matplotlib import pyplot as plt
+from scipy.stats import pearsonr
+from src.stat import read_stat
+
+msa_stat = read_stat("./data/azo_rfam_aln.stat")
+samp_stat = read_stat("./DCA_TM/sample_4.stat")
+
+pos_l = list(msa_stat.keys())
+msa_p_val = [msa_stat[el][0] for el in pos_l if el[0] != el[1]]
+msa_s_val = [msa_stat[el][0] for el in pos_l if el[0] == el[1]]
+msa_c_val = [msa_stat[el][1] for el in pos_l if el[0] != el[1]]
+
+samp_p_val = [samp_stat[el][0] for el in pos_l if el[0] != el[1]]
+samp_s_val = [samp_stat[el][0] for el in pos_l if el[0] == el[1]]
+samp_c_val = [samp_stat[el][1] for el in pos_l if el[0] != el[1]]
+
+fsize = 7
+size_d = 5
+fig = plt.figure(figsize=(5, 5))
+prob_f = fig.add_subplot(111)
+cov_f = prob_f.inset_axes([0.66, 0.07, 0.3, 0.3])
+prob_f.scatter(msa_p_val, samp_p_val, color="gray", alpha=0.5, s=size_d, label="$f_{ij}$")
+prob_f.scatter(msa_s_val, samp_s_val, color="orange", alpha=0.8, s=size_d, label="$f_{i}$")
+prob_f.set_aspect("equal", adjustable="box")
+prob_f.axis("square")
+prob_f.grid(True, color="grey",linestyle="--", linewidth=0.2)
+prob_f.set_title("$\\rho(f_{ij}, \hat{f}_{ij})$="+"({:.2f})".format(pearsonr(msa_p_val, samp_p_val)[0]), fontsize=fsize+4)
+
+cov_f.scatter(msa_c_val, samp_c_val, color="grey", alpha=0.6, s=size_d, label="$c_{ij}$")
+cov_f.set_aspect("equal", adjustable="box")
+cov_f.axis("square")
+cov_f.set_title("$\\rho(c_{ij}, \hat{c}_{ij})$="+"({:.2f})".format(pearsonr(msa_c_val, samp_c_val)[0]), fontsize=fsize+4)
+cov_f.grid(True, color="grey",linestyle="--", linewidth=0.2)
+cov_f.legend(loc="upper left", fontsize=fsize+4)
+plt.legend(fontsize=fsize+4)
+plt.show()
+#+end_src
+
+#+RESULTS:
+
+** logo
+
+#+begin_src bash :results output
+#+end_src
+
+** analyze random mutations for Azoarcus
+
+#+begin_src python :results output
+from matplotlib import pyplot as plt
+from src.seq_io import read_output
+from numpy import array
+plt.rcParams["font.family"] = "serif"
+azoarcus_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))
+
+results = {}
+for l in open("./AZO_RM/full_profile_scores.seq"):
+    val = l.strip().split()
+    seq, cor_, dca_sc_ = val
+    seq = seq[3:-1]
+    dist = hamming(seq, azoarcus_seq)
+    results[seq] = (float(cor_), float(dca_sc_), dist)
+    
+seq_list = list(results.keys())    
+all_struct = array([results[el][0] for el in seq_list])
+all_dca = array([results[el][1] for el in seq_list])
+all_mut = array([results[el][2] for el in seq_list])
+ref_struct, ref_dca = 5.121921630066443, -312.16007599999887
+
+fig = plt.figure()
+dca_struct_f = fig.add_subplot(111)
+dca_p = dca_struct_f.scatter(all_struct - ref_struct, all_dca - ref_dca, c=all_mut, alpha=0.5, s=0.4)
+dca_struct_f.set_xlabel("STRUCT")
+dca_struct_f.set_ylabel("DCA")
+dca_struct_f.grid(True, color="grey",linestyle="--", linewidth=0.2)
+plt.colorbar(dca_p)
+plt.savefig("img/full_prof_random.png", dpi=300)
+
+plt.show()
+#+end_src
+
+#+RESULTS:
+
+which positions have been mutated
+#+begin_src python :results output
+from src.stat import composition
+from src.seq_io import read_output
+from matplotlib import pyplot as plt
+from numpy import arange
+plt.rcParams["font.family"] = "serif"
+
+azoarcus_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+azoarcus_str = "(((((((..((....)).)))))))...((((((....((((((...((...((((((....))))))..))...))))))(((...(.((((((....)))))).)..)))...[.[[[[[...))))))((((...(((....)))..))))......]]]]]]..((.(((((....))))).....))."
+hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))
+lseq = len(azoarcus_seq)
+all_prof = []
+
+msa_seq = [l.strip() for l in open("./data/azo_rfam_aln.seq")]
+msa_comp = composition([seq for seq in msa_seq])
+msa_prof = [sum(c for n, c in pos.items() if n not in [ref, "-"]) for pos, ref in zip(msa_comp, azoarcus_seq)]
+
+tmp = [0 for _ in range(lseq)]
+samp = [el.strip().split()[0][3:-1] for el in open("./AZO_RM/full_profile_scores.seq") if not el.startswith(">")]
+compo = composition([seq for seq in samp])
+samp_prof = [sum(c for n, c in pos.items() if n != ref) for pos, ref in zip(compo, azoarcus_seq)]
+
+fig = plt.figure(1)
+designed_f = fig.add_subplot(311)
+msa_f = fig.add_subplot(312)
+hist_f = fig.add_subplot(313)
+width = 0.4
+
+ax1 = designed_f.bar(arange(lseq), height=samp_prof, width=width)
+ax3 = designed_f.twiny()
+ax3.xaxis.set_ticks(range(len(azoarcus_seq)))
+ax3.xaxis.set_ticklabels(azoarcus_str.replace('-', ''), fontsize=10)
+# designed_f.legend(loc="upper right", fontsize=5, ncol=10)
+msa_f.bar(arange(lseq), height=msa_prof, width=width)
+designed_f.set_xlim(0, lseq)
+msa_f.set_xlim(0, lseq)
+
+hist_f.hist([hamming(seqi, seqj) for i, seqi in enumerate(samp) for seqj in samp[i+1:]])
+
+plt.savefig("./img/full_prof_random_prof.png", dpi=300)
+plt.show()
+#+end_src
+
+#+RESULTS:
+* Selection of sequences
+** DCA_TM
+Selection criteria:
+- DCA score
+- structure score
+
+#+begin_src python :results output
+from matplotlib import pyplot as plt
+from src.seq_io import read_output
+from numpy import array
+plt.rcParams["font.family"] = "serif"
+ref_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))
+
+results = {}
+for i in range(1, 11):
+    samp = read_output(f"./DCA_TM/out/sample_{i}_t0.1_w0.3.out")
+    for seq in samp:
+        if seq not in results and samp[seq][1] <= 0:
+          results[seq] = samp[seq]
+
+seq_list = list(results.keys())
+
+all_struct = array([results[el][0] for el in seq_list])
+all_dca = array([results[el][1] for el in seq_list])
+all_mut = array([hamming(el, ref_seq) for el in seq_list])
+# ref_struct, ref_dca, _ = [results[seq] for seq in results if results[seq][2] == 0][0]
+ref_struct, ref_dca = 5.121921630066443, -312.16007599999887
+fig = plt.figure()
+
+# # group per size
+# per_size = {}
+# for seq, el in results.items():
+#     if el[2] not in per_size:
+#         per_size[el[2]] = [seq]
+#     else:
+#         per_size[el[2]] += [seq]
+# nb_mut_k = list(per_size.keys())
+# nb_mut_k.sort()
+
+# print(len([1 for d_, st_ in zip(all_dca, all_struct) if d_ < ref_dca and st_ < ref_struct]))
+
+dca_struct_f = fig.add_subplot(111)
+dca_p = dca_struct_f.scatter(all_struct - ref_struct, all_dca - ref_dca, c=all_mut, alpha=0.5, s=0.4)
+dca_struct_f.set_xlabel("STRUCT")
+dca_struct_f.set_ylabel("DCA")
+dca_struct_f.grid(True, color="grey",linestyle="--", linewidth=0.2)
+plt.colorbar(dca_p)
+# plt.savefig("img/struct_dca_dca_tm.png", dpi=300)
+
+plt.show()
+#+end_src
+
+#+RESULTS:
+
+21358 with score struct/DCA better than AZO.
+
+where sequences have better scores than azoarcus
+-> Maximize diversity (see the script ~optimize_ent.py~)
+
+#+begin_src python :results output :tangle src/optimize_ent.py
+from random import sample, randint, uniform
+from numpy import mean, exp
+from src.seq_io import read_output
+from src.stat import composition, entropy
+ref_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))
+
+ref_struct, ref_dca = 5.121921630066443, -312.16007599999887
+results = {}
+for i in range(1, 11):
+    samp = read_output(f"./DCA_TM/out/sample_{i}_t0.1_w0.3.out")
+    for seq in samp:
+        if seq not in results and samp[seq][0] <= ref_struct and samp[seq][1] <= ref_dca and hamming(seq, ref_seq) >= 10:
+          results[seq] = samp[seq]
+
+all_seq = list(results.keys())
+
+samp = sample(all_seq, 3000)
+prof = composition(samp)
+ent = mean([entropy(p) for p in prof])
+left_in = [el for el in all_seq if el not in samp]
+
+ibeta = 1.0/0.6
+nb_opt = 100
+
+for i in range(nb_opt):
+    old_el = samp.pop(randint(0, 2999))
+    new_el = left_in.pop(randint(0, len(left_in) - 1))
+    prof = composition(samp + [new_el])
+    nent = mean([entropy(p) for p in prof])
+    if nent < ent or exp((ent - nent) * ibeta) <= uniform(0, 1):
+        samp += [new_el]
+        left_in += [old_el]
+        ent = nent
+    else:
+        samp += [old_el]
+        left_in += [new_el]
+    print(ent)
+#+end_src
+
+Which positions have been mutated:
+
+#+begin_src python :results output
+from src.stat import composition
+from src.seq_io import read_output
+from matplotlib import pyplot as plt
+from numpy import arange
+plt.rcParams["font.family"] = "serif"
+
+azoarcus_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+azoarcus_str = "(((((((..((....)).)))))))...((((((....((((((...((...((((((....))))))..))...))))))(((...(.((((((....)))))).)..)))...[.[[[[[...))))))((((...(((....)))..))))......]]]]]]..((.(((((....))))).....))."
+hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))
+lseq = len(azoarcus_seq)
+all_prof = []
+
+msa_seq = [l.strip() for l in open("./data/azo_rfam_aln.seq")]
+msa_comp = composition([seq for seq in msa_seq])
+msa_prof = [sum(c for n, c in pos.items() if n not in [ref, "-"]) for pos, ref in zip(msa_comp, azoarcus_seq)]
+
+tmp = [0 for _ in range(lseq)]
+samp = [el.strip() for el in open("./DCA_SB/out/sample_sb_t0.1_75dca.out") if not el.startswith(">")]
+compo = composition([seq for seq in samp])
+samp_prof = [sum(c for n, c in pos.items() if n != ref) for pos, ref in zip(compo, azoarcus_seq)]
+
+fig = plt.figure(1)
+designed_f = fig.add_subplot(311)
+msa_f = fig.add_subplot(312)
+hist_f = fig.add_subplot(313)
+width = 0.4
+
+ax1 = designed_f.bar(arange(lseq), height=samp_prof, width=width)
+ax3 = designed_f.twiny()
+ax3.xaxis.set_ticks(range(len(azoarcus_seq)))
+ax3.xaxis.set_ticklabels(azoarcus_str.replace('-', ''), fontsize=10)
+# designed_f.legend(loc="upper right", fontsize=5, ncol=10)
+msa_f.bar(arange(lseq), height=msa_prof, width=width)
+designed_f.set_xlim(0, lseq)
+msa_f.set_xlim(0, lseq)
+
+hist_f.hist([hamming(seqi, seqj) for i, seqi in enumerate(samp) for seqj in samp[i+1:]])
+
+# plt.savefig("./img/selected_dca_sb.png", dpi=300)
+plt.show()
+#+end_src
+
+#+RESULTS:
+
+** DCA_SB
+
+#+begin_src python :results output
+from matplotlib import pyplot as plt
+from src.seq_io import read_output
+from numpy import array
+plt.rcParams["font.family"] = "serif"
+ref_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))
+
+results = {}
+for i in range(1, 7):
+    samp = read_output(f"./DCA_SB/out/sample_{i}_t0.1.out")
+    for seq in samp:
+        if seq not in results and samp[seq][1] <= 0:
+          results[seq] = list(samp[seq])
+          results[seq] += [hamming(seq, ref_seq)]
+
+seq_list = list(results.keys())
+
+all_struct = array([results[el][0] for el in seq_list])
+all_dca = array([results[el][1] for el in seq_list])
+all_mut = array([results[el][2] for el in seq_list])
+# ref_struct, ref_dca, _ = [results[seq] for seq in results if results[seq][2] == 0][0]
+ref_struct, ref_dca = 5.121921630066443, -312.16007599999887
+fig = plt.figure()
+
+# # group per size
+# per_size = {}
+# for seq, el in results.items():
+#     if el[2] not in per_size:
+#         per_size[el[2]] = [seq]
+#     else:
+#         per_size[el[2]] += [seq]
+# nb_mut_k = list(per_size.keys())
+# nb_mut_k.sort()
+
+# print(len([1 for d_, st_ in zip(all_dca, all_struct) if d_ < ref_dca and st_ < ref_struct]))
+
+dca_struct_f = fig.add_subplot(111)
+dca_p = dca_struct_f.scatter(all_struct - ref_struct, all_dca - ref_dca, c=all_mut, alpha=0.5, s=0.4)
+dca_struct_f.set_xlabel("STRUCT")
+dca_struct_f.set_ylabel("DCA")
+dca_struct_f.grid(True, color="grey",linestyle="--", linewidth=0.2)
+plt.colorbar(dca_p)
+# plt.savefig("img/struct_dca_dca_tm.png", dpi=300)
+
+plt.show()
+#+end_src
+
+#+RESULTS:
+
+* Analyze selected sequences (figures)
+** Diversity
+
+bar plot like logos
+
+#+begin_src python :results output
+from src.stat import composition
+from src.seq_io import read_output
+from matplotlib import pyplot as plt
+from numpy import arange, array
+plt.rcParams["font.family"] = "serif"
+
+azoarcus_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+azoarcus_str = "(((((((..((....)).)))))))...((((((....((((((...((...((((((....))))))..))...))))))(((...(.((((((....)))))).)..)))...[.[[[[[...))))))((((...(((....)))..))))......]]]]]]..((.(((((....))))).....))."
+hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))
+lseq = len(azoarcus_seq)
+all_prof = []
+
+msa_seq = [l.strip() for l in open("./data/azo_rfam_aln.seq")]
+msa_comp = composition([seq for seq in msa_seq])
+msa_prof = [sum(c for n, c in pos.items() if n not in [ref, "-"]) for pos, ref in zip(msa_comp, azoarcus_seq)]
+
+tmp = [0 for _ in range(lseq)]
+samp = [el.strip().split()[0][3:-1] for el in open("./TM_pools/TM_complete-tertiary.txt") if not el.startswith(">")]
+
+compo = composition([seq for seq in samp])
+
+samp_prof = [sum(c for n, c in pos.items() if n != ref) for pos, ref in zip(compo, azoarcus_seq)]
+
+fig = plt.figure(1)
+designed_f = fig.add_subplot(111)
+width = 0.5
+
+ax3 = designed_f.twiny()
+ax3.xaxis.set_ticks(range(len(azoarcus_seq)))
+ax3.xaxis.set_ticklabels(azoarcus_str.replace('-', ''), fontsize=10)
+
+pred_des = array([0. for _ in range(lseq)])
+pred_msa = array([0. for _ in range(lseq)])
+cmap = ("mediumseagreen", "darkorange",  "dodgerblue", "orangered", "white")
+
+for i, nuc in enumerate(['A', 'C', 'U', 'G']):
+    tmp_des = array([pos[nuc] if nuc in pos and nuc != ref else 0 for pos, ref in zip(compo, azoarcus_seq)])/len(samp)
+    tmp_msa = -array([pos[nuc] if nuc in pos and nuc not in ["-"] else 0 for pos, ref in zip(msa_comp, azoarcus_seq)])/len(msa_seq)
+    designed_f.bar(arange(lseq), height=tmp_des, width=width, bottom=pred_des, color=cmap[i])
+    designed_f.bar(arange(lseq), height=tmp_msa, width=width, bottom=pred_msa, color=cmap[i])
+    pred_des += tmp_des
+    pred_msa += tmp_msa
+designed_f.plot([0, lseq], [0, 0])
+designed_f.set_xlim([0, lseq])
+plt.show()
+#+end_src
+
+#+RESULTS:
+
+: #+RESULTS:220
+
+** distribution in sequence space
+
+#+begin_src python :results output
+from src.seq_io import read_fasta, compute_corr, read_seq
+from tools.utils import read_dca_score, comp_dca_score , paired_positions
+from numpy import zeros, array
+import numpy as np
+
+from numpy.random import RandomState, normal
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+
+azoarcus_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+azoarcus_str = "(((((((..((....)).)))))))...((((((....((((((...((...((((((....))))))..))...))))))(((...(.((((((....)))))).)..)))...[.[[[[[...))))))((((...(((....)))..))))......]]]]]]..((.(((((....))))).....))."
+hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))/len(seqi)
+
+len_seq = len(azoarcus_seq)
+target_mat = zeros((len_seq, len_seq))
+true_pairs = paired_positions(azoarcus_seq)
+for pi, pj in true_pairs:
+    target_mat[pi, pj] = 1.0
+
+# read sequences
+tm_seq = list(read_fasta("./to_send/pool_1/DCA_TM.out").values())
+sequences = read_seq("./to_send/pool_1/AZO_RM.seq") + tm_seq
+dca_parms = read_dca_score("./data/h_prime.dca")
+
+features, features_l = {}, []
+with open("scratch/out.scores", "w") as out:
+    for seq in sequences:
+        dist_ref = hamming(seq, azoarcus_seq)
+        dca_val = comp_dca_score(seq, dca_parms)
+        str_val = compute_corr(seq, azoarcus_str, target_mat)
+        # features[seq] = array([dist_ref, dca_val, str_val])
+        features_l += [[dist_ref, dca_val, str_val, seq.count("A"), seq.count("C"), seq.count("G"), seq.count("U")]]
+        out.write(("{} "*8+"\n").format(seq, dist_ref, dca_val, str_val, seq.count("A"), seq.count("C"), seq.count("G"), seq.count("U")))
+#+end_src
+
+#+RESULTS:
+
+#+begin_src python :results output
+from numpy import zeros, array
+import numpy as np
+
+from numpy.random import RandomState, normal
+
+from sklearn import manifold
+from sklearn.metrics import pairwise_distances
+from random import sample, seed
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+
+features_l = []
+design_f = []
+seq_file = ["DCA_SB_50.fa", "DCA_SB_75.fa", "DCA_TM.fa", "AZO_RM.fa", "AZO_RM_30_mut.fa", "AZO_RU_30_mut.fa"]
+colors = ["blue", "red", "gold", "green", "blueviolet", "slategray"]
+col_el = {sf: c for sf, c in zip(seq_file, colors)}
+colors_l = []
+for l in open("./scratch/out.scores"):
+    val = list(map(float, l.strip().split()[2:]))
+    colors_l += [col_el[l.strip().split()[0]]]
+    features_l += [val]
+
+# nb_seq = len(sequences)
+# dist_mat = zeros((nb_seq, nb_seq))
+# for pi, seqi in enumerate(sequences):
+#     for pj, seqj in enumerate(sequences[pi+1:], start=pi):
+#         dist_mat[pi, pj] = sum(features[seqi] - features[seqj]) + hamming(seqi, seqj)
+
+# seed = RandomState(seed=3)
+# mds = manifold.MDS(n_components=2, random_state=seed, dissimilarity="precomputed", n_jobs=20)
+# pos = mds.fit_transform(dist_mat)
+
+results = array(features_l)
+results -= results.mean(axis=0)
+results /= results.var(axis=0)**0.5
+cov = np.cov(results.T)/results.shape[0]
+V, W = np.linalg.eig(cov)
+idx = V.argsort()[::-1]
+W = W[:, idx]
+
+fig = plt.figure()
+plan_f = fig.add_subplot(111)
+# plan_f.set_aspect('equal', adjustable='box')
+
+plan_f.scatter(results.dot(W[:,0]) , results.dot(W[:,1]) , alpha=0.5, s=10, color=colors_l)
+# plan_f.scatter(pos[:, 0], pos[:, 1], c=colors, lw=0, alpha=1.0, s=30)
+plt.show()
+
+#+end_src
+
+#+RESULTS:
+
+* What worked out in the previous sequences
+From the analysis of reads (sequencing), take sequences
+
+#+begin_src python :results output
+results = {}
+for l in open("./data/read_counts.out"):
+    val = l.strip().split()
+    name, count_, prcent_, seq = val
+    count, prcent = float(count_), float(prcent_)
+    results[name] = (count, prcent, seq)
+
+for name in results:
+    if "GII" not in name and "NNMpool" not in name:
+        gc_prcent = round(100.0 * (results[name][2].count("C") + results[name][2].count("G"))/len(results[name][2]), 1)
+        print(">" + name + "_" + str(gc_prcent) + "\n" + results[name][2])
+#+end_src
+
+plot the selected sequences
+
+#+begin_src python :results output
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
+from matplotlib import rcParams
+import re
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["font.weight"] = "bold"
+plt.rcParams["font.size"] = 7
+plt.rcParams['text.usetex'] = True
+
+NUC = ['A', 'C', 'T', 'G', '-']
+COL = {n: i for i, n in enumerate(NUC)}
+to_num = lambda s: [COL[nuc] for nuc in s]
+
+methods = ['dca_least', 'arnaque', 'vae', 'dca_azo', 'nnm_ter', 'NNMpool', 'dca_tm_5-10', 'dca_tm_10-20', 'dca_tm', 'dca_tm_20-30', 'GII_exon_pool']
+names, seqs = [el.split()[0] for el in open("./data/read_counts.out")], [el.strip().split()[3] for el in open("./data/read_counts.out")]
+names = [name for name, seq in zip(names, seqs) if len(seq) == 197]
+seqs = [seq for name, seq in zip(names, seqs) if len(seq) == 197]
+
+index_print = {}
+for si, name in enumerate(names):
+    for method in methods:
+        # if name.startswith(method):
+        if re.match("^"+method+"_[0-9]+$", name) is not None:
+            if method not in index_print:
+                index_print[method] = si
+nb_seq = len(seqs)
+lseq = len(seqs[0])
+msa_in_num = [np.array(to_num(s)) for s in seqs[::-1] if len(s) == 197]
+arr_seqs = np.array(msa_in_num)
+
+cmap = ListedColormap(["mediumseagreen", "orange",  "dodgerblue", "orangered", "white"])
+boundaries = [0, 1, 2, 3, 4, 5]
+norm = BoundaryNorm(boundaries, cmap.N, clip=True)
+
+fig = plt.figure(figsize=(10, 5))
+left, width = 0.05, 0.8
+bottom, height = 0.1, 0.85
+rect_scatter = [left, bottom, width, height]
+ali_f = fig.add_axes(rect_scatter)
+# ali_f  = fig.add_subplot(111)
+
+ali_f.pcolormesh(arr_seqs, cmap=cmap, norm=norm)
+index_print_l = list(index_print.items())
+
+met_names = ['dca_tm_10-20' , 'dca_tm_20-30' , 'dca_azo' , 'vae' , 'dca_tm' , 'arnaque' , 'nnm_ter']
+for name, l in index_print_l:
+    if l > 0:
+        ali_f.plot([0, lseq], [nb_seq - l, nb_seq - l], c="black", linestyle="--", linewidth=2)
+        # ali_f.annotate(name.replace("_", "-"), (-1, nb_seq - l), size=20, color="black")
+        ali_f.text(lseq+1, nb_seq - l - 2, name.replace("_", "-"), size=11, color="black")
+    else:
+        ali_f.text(lseq+1, nb_seq - l - 2, name.replace("_", "-"), size=11, color="black")
+
+ali_f.set_xlabel("Positions", fontsize=17)
+plt.savefig("./img/sequencing_align_dat.png", dpi=300, transparent=True)
+plt.show()
+#+end_src
+
+#+RESULTS:
+* Design with tertiary structure interaction
+** Define constraints
+
+#+begin_src python :results output
+a = "GUGNNNNNNNNNNNGAAANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGAGACUANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNUAGUCCNNNNNNNNNNNNNNNNNNNNNNNNNNNG"
+a = "GUGNCNNNNNNNNNGAAANNNNNNNNGNNANNNNNNCNAAUNCGNCNNNNNCUAAGNNNNNNNNNNNNNNUAUGNNNNNGNCGNNCCANNNNNNNNNNNNNNNNNNNNNNNNGGNGUAGAGACUANNNGNNNNNNNNCUAAGNNNNNNNNUAUGNNNNNNNCAUAGUCCNNNNNNNNNNGAAANNNNNNNNNNNNNG"
+nb_mut = a.count("N")
+print(nb_mut, len(a)-nb_mut, (len(a)- nb_mut)/len(a))
+#+end_src
+
+#+RESULTS:
+: 130 67 0.3401015228426396
+
+#+begin_src fasta :results output
+>azo
+GUGCCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCGG
+>1U6B_1|Chain A[auth B]|197-MER|null
+GGCCGUGUGCCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGCAGCCAUUGCACUCCGGCUGCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGA
+>1U6B_2|Chain B[auth C]|5'-R(*AP*AP*GP*CP*CP*AP*CP*AP*CP*AP*AP*AP*CP*CP*AP*GP*AP*CP*GP *GP*CP*C)-3'|
+AAGCCACACAAACCAGACGGCC
+>1U6B_3|Chain C[auth D]|5'-R(*CP*AP*(5MU))-3'|
+CAU
+#+end_src
+
+#+begin_src python :results output
+from Bio import pairwise2
+a = "GUGCCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCGG"
+b = "GGCCGUGUGCCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGCAGCCAUUGCACUCCGGCUGCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGA"
+
+alig = pairwise2.align.globalms(a, b, 2, -2, -4, -1, penalize_end_gaps=False)[0]
+print(alig.seqA)
+print(alig.seqB)
+#+end_src
+
+#+RESULTS:
+: ------GUGCCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCC--UGC------GC--CGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCGG
+: GGCCGUGUGCCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGCAGCCAUUGCACUCCGGCUGCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGA----------------
+
+#+begin_src fasta :results output
+------GUGCCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCC--UGC------GC--CGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCGG
+GGCCGUGUGCCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGCAGCCAUUGCACUCCGGCUGCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGA----------------
+      GUGNCNNNNNNNNNGAAANNNNNNNNGNNANNNNNNCNAAUNCGNCNNNNNCUAAGNNNNNNNNNNNNNNUAUGNNNNNGNCGNNCCANNNNNNNNNNNN  NNN      NN  NNNNNNNGGNGUAGAGACUANNNGNNNNNNNNCUAAGNNNNNNNNUAUGNNNNNNNCAUAGUCCNNNNNNNNNNGAAANNNNNNNNNNNNNG
+          X         XXXX        X  X      X XX- XX X     XXXXX              XXXX     X XX  XXX                                  XX XXXXXXXXXX            XXXXX        XXXX       XXXXXXXX                            
+#+end_src
+* other test
+** distribution of sequence distances in the MSA
+
+#+begin_src python :results output
+from matplotlib import pyplot as plt
+
+hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj) if "-" not in [ei, ej])
+
+msa_seq = [l.strip() for l in open("./data/azo_rfam_aln.seq")]
+
+plt.hist([hamming(seqi, seqj) for i, seqi in enumerate(msa_seq) for seqj in msa_seq[i+1:]])
+plt.savefig("natural_hamm_dist.png", dpi=300)
+plt.show()
+#+end_src
+
+#+RESULTS:
+* Selected sequences file
+
+get TM_pools only
+#+begin_src python :results output
+def read_output(infile):
+    results = []
+    for si, l in enumerate(open(infile)):
+        seq = l.strip().split()[0]
+        results += [(si, seq)]
+    return results
+
+full_const = read_output("./TM_pools/TM_complete-tertiary.txt")
+with open("./to_send/pool_1/FULL_3D_CONST.fa", "w") as out:
+    for name, seq in full_const:
+        seq = seq[3:-1]
+        out.write(f">{name}\n{seq}\n")
+#+end_src
+
+#+RESULTS:
+
+#+begin_src python :results output
+from src.seq_io import read_fasta 
+from glob import glob
+import re
+
+seen = set()
+with open(f"./selected.fa", "w") as out, open("./nat_sel.fa", "w") as nat_out:
+    for el in glob("./to_send/pool_1/*.fa"):
+        if "selected.fa" not in el:
+            name_f = re.search("./to_send/pool_1/(.+)\.fa", el).group(1)
+            tot = 0
+            for name_seq, seq in read_fasta(el).items():
+                if name_f != "NAT_GII_sel":
+                    seq_ = "GUG" + seq + "G"
+                else:
+                    seq_ = seq.replace("T", "U")
+                if seq_ not in seen:
+                    seen.add(seq_)
+                    full_name = name_f+"_"+name_seq.split()[0]
+                    out.write(f">{full_name}\n{seq_}\n")
+                    if name_f == "NAT_GII_sel":
+                        nat_out.write(f">{full_name}\n{seq_}\n")
+                    tot += 1
+                    if name_f == "DCA_SB_75" and tot == 828:
+                        break
+            print(name_f, tot)
+print(len(seen))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+FULL_3D_CONST 1000
+DCA_SB_75 828
+DCA_SB_50 988
+AZO_RM 1000
+MIN_CONST 1000
+NAT_GII_sel 184
+AZO_RU_30_mut 1000
+AZO_RM_30_mut 1000
+DCA_TM 5000
+12000
+#+end_example
+
+pick natural GIIs
+#+begin_src python :results output
+from src.seq_io import read_fasta 
+
+with open("./to_send/pool_1/NAT_GII_sel.fa", "w") as out:
+    for name, seq in read_fasta("./to_send/pool_1/NAT_GII.fa").items():
+        if abs(len(seq) - 197)/197.0 <= 0.1:
+            out.write(f">{name}\n{seq}\n")
+#+end_src
+
+#+RESULTS:
