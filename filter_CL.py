@@ -87,7 +87,7 @@ def filter():
     activity_des = {}
     nsu_count_des = {}
 
-    for name, seq in sel_nsu:
+    for name, seq in sel_nsu.items():
         name_des = name.split("|")[1]
         if name_des in nsu_count_des.keys():
             nsu_count_des[name_des] += 1
