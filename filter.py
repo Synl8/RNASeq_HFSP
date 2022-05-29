@@ -94,7 +94,7 @@ def filter():
             else:
                 activity_des[name_des] = 1
 
-    saveData({"data":(sub_seq_list, ref_seq_list, res_act)}, "save.json")
+    saveData({"data":(activity_des, sub_seq_list, ref_seq_list, res_act)}, "save.json")
     return activity_des, sub_seq_list, ref_seq_list, res_act
 
 def printActiveVariant(activity_des):
