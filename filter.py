@@ -1,3 +1,4 @@
+import pathSetting
 from collections import defaultdict
 from numpy import mean, log10, std, linspace
 import re, sys, os, subprocess, time
@@ -12,11 +13,7 @@ from Bio import pairwise2
 ################################################################################
 # global variable
 ggg_test = lambda seq: seq[::-1].startswith("GGGG"[::-1])
-databaseFilePath = "pool0_1.fa"
-variantReadFilePath = "L422T14_cl.fa"
-nsuFilePath = "L422T13_cl.fa"
-mafftPath = "/usr/bin/mafft"
-
+databaseFilePath, variantReadFilePath, nsuFilePath, mafftPath = getFilePath()
 
 ################################################################################
 # functions
