@@ -106,8 +106,8 @@ def alignVariant(variantName, activity_dict, sub_seq_list, ref_seq_list, res_act
     for (name, seq), ref_seq, act in zip(sub_seq_list, ref_seq_list, res_act):
         name_des = name.split("|")[1]
         if act and name_des == variantName:
-            if len(recordList) == 0: recordList.append(SeqRecord(Seq(ref_seq), id = variantName))
-            recordList.append(SeqRecord(Seq(seq), id = name))
+            if len(recordList) == 0: recordList.append(SeqRecord(Seq(ref_seq), id = variantName, description="", name=""))
+            recordList.append(SeqRecord(Seq(seq), id = name, description="", name=""))
 
     fastaFile = variantName+ ".fa"
     alignedFile = variantName+ "_aln.fa"
