@@ -60,9 +60,11 @@ def test_activity(args):
 def test_activity2(args):
     ref_seq, seq_x_ = args
     seq_x = seq_x_.replace("-", "")
+    ref_seq = ref_seq + "aatccgttggtgctg".upper() + "AACTTCAAATATCTTCGGAACTCA"
+
     if test_if_sub(seq_x):
         try:
-            alig = pairwise2.align.globalms(ref_seq+'AATCCGTTGGTGCTG'+'AACTTCAAATATCTTCGGAACTCA', seq_x, 2, -2, -4, -1, penalize_end_gaps=False)[0]
+            alig = pairwise2.align.globalms(ref_seq, seq_x, 2, -2, -4, -1, penalize_end_gaps=False)[0]
         except: 
             return False
         al_pos = "".join([x_n for ref_n, x_n in zip(alig[0], alig[1]) if ref_n != "-"])
