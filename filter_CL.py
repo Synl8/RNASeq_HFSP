@@ -169,7 +169,7 @@ def alignVariant(variantName, activity_dict, sub_seq_list, ref_seq_list, res_act
     fastaFile ="results/" + variantName+ ".fa"
     alignedFile = "results/" + variantName+ "_aln.fa"
     SeqIO.write(recordList , fastaFile, "fasta")
-    mafft_cline = mafftPath+ " --auto --out "+ os.path.abspath(alignedFile) + " " + os.path.abspath(fastaFile)
+    mafft_cline = settings["mafftPath"] + " --auto --out "+ os.path.abspath(alignedFile) + " " + os.path.abspath(fastaFile)
     print("Sometimes the subproccess get locked for no reason. If it happens, please quit and run the following command manually :")
     print(mafft_cline)
     print("Processing alignment")
