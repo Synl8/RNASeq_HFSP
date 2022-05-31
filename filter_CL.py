@@ -74,17 +74,17 @@ def test_activity(args):
 
 # usefull global variables 
 all_designs = {n.split()[0]: seq for n, seq in read_fasta(settings["databaseFilePath"]).items()}
-sel_fa_nsu = {n.split()[0]: s for n, s in read_fasta(settings["cleanedSubFilePath"]).items()}
+sel_fa_nsu = {n.split()[0]: s for n, s in read_fasta(settings["cleanSubFilePath"]).items()}
 sel_nsu, sel_sub = defaultdict(lambda: []), defaultdict(lambda: [])
 
 def filter():
     # save reads from no-sub condition
-    for name, seq in read_fasta(settings["cleanedNSubFilePath"]).items():
+    for name, seq in read_fasta(settings["cleanNSubFilePath"]).items():
         name_des = name.split("|")[1]
         sel_nsu[name_des] += [seq]
 
     # save active reads
-    sub_seq_list = list(read_fasta(settings["cleanedSubFilePath"]).items())
+    sub_seq_list = list(read_fasta(settings["cleanSubFilePath"]).items())
     ref_seq_list = []
 
     for name, seq in sub_seq_list:
