@@ -1,4 +1,4 @@
-from pathSetting_CL import *
+from settings import *
 from collections import defaultdict
 from numpy import append, mean, log10, std, linspace
 import re, sys, os, subprocess, time
@@ -9,12 +9,13 @@ from Bio.SeqRecord import SeqRecord
 from Bio import pairwise2
 import json
 import pandas as pd
+# import tkinter as tk
 
 
 ################################################################################
 # global variables
 ggg_test = lambda seq: seq[::-1].startswith("GGGG"[::-1])
-databaseFilePath, variantReadFilePath, nsuFilePath, mafftPath = getFilePath()
+settings = getSettings()
 
 ################################################################################
 
@@ -29,6 +30,18 @@ def loadData(file):
     with open(file) as json_file:
         data = json.load(json_file)
         return data
+
+
+
+# def finishPopUpDialogBox(msg, title):
+    # root = tk.Tk()
+    # root.title(title)
+    # label = ttk.Label(root, text=msg)
+    # label.pack(side="top", fill="x", pady=10)
+    # B1 = tk.Button(root, text="Okay", command = root.destroy)
+    # B1.pack()
+    # popup.mainloop()
+    
 
 def read_fasta(infile):
     "read fasta files, return a dictionary"
@@ -49,6 +62,7 @@ def test_activity(args):
     seq_x = seq_x_.replace("-", "")
     if test_if_sub(seq_x):
         try:
+            ref_seq += settings["exon"]+ settings["sub2"]
             alig = pairwise2.align.globalms(ref_seq, seq_x, 2, -2, -4, -1, penalize_end_gaps=False)[0]
         except: 
             return False
@@ -59,18 +73,18 @@ def test_activity(args):
 
 
 # usefull global variables 
-all_designs = {n.split()[0]: seq for n, seq in read_fasta(databaseFilePath).items()}
-sel_fa_nsu = {n.split()[0]: s for n, s in read_fasta(subFilePath).items()}
+all_designs = {n.split()[0]: seq for n, seq in read_fasta(settings["databaseFilePath"]).items()}
+sel_fa_nsu = {n.split()[0]: s for n, s in read_fasta(settings["subFilePath"]).items()}
 sel_nsu, sel_sub = defaultdict(lambda: []), defaultdict(lambda: [])
 
 def filter():
     # save reads from no-sub condition
-    for name, seq in read_fasta(nsubFilePath).items():
+    for name, seq in read_fasta(settings["nSubFilePath"]).items():
         name_des = name.split("|")[1]
         sel_nsu[name_des] += [seq]
 
     # save active reads
-    sub_seq_list = list(read_fasta(subFilePath).items())
+    sub_seq_list = list(read_fasta(settings["subFilePath"]).items())
     ref_seq_list = []
 
     for name, seq in sub_seq_list:
@@ -122,7 +136,7 @@ def filter():
     csvData = {"referenceName":nameList, "nsuCountRead":nbNsuList, "actif_count": nbActifList, "activityRatio": ratioList}
     df = pd.DataFrame.from_dict(csvData)
     if not os.path.isdir("results_csv") : os.makedirs("results_csv")
-    df.to_csv("results_csv/"+databaseFilePath.split(".")[0].replace(".", "") + "_activity.csv", index=False,   sep=",")
+    df.to_csv("results_csv/"+ settings["databaseFilePath"].split(".")[0].replace(".", "") + "_activity.csv", index=False,   sep=",")
     saveData({"data":(activity_des, sub_seq_list, ref_seq_list, res_act)}, "save.json")
     return activity_des, sub_seq_list, ref_seq_list, res_act
 
@@ -145,7 +159,9 @@ def alignVariant(variantName, activity_dict, sub_seq_list, ref_seq_list, res_act
     for (name, seq), ref_seq, act in zip(sub_seq_list, ref_seq_list, res_act):
         name_des = name.split("|")[1]
         if act and name_des == variantName:
-            if len(recordList) == 0: recordList.append(SeqRecord(Seq(ref_seq), id = variantName, description="", name=""))
+            if len(recordList) == 0: 
+                ref_seq += settings["exon"] + settings["sub2"]
+                recordList.append(SeqRecord(Seq(ref_seq), id = variantName, description="", name=""))
             recordList.append(SeqRecord(Seq(seq), id = name, description="", name=""))
     
     if not os.path.isdir("results") : os.makedirs("results")
@@ -178,10 +194,12 @@ def main():
     t1 = time.time()
     if not os.path.isfile("save.json"):
         activity_dict, sub_seq_list, ref_seq_list, res_act = filter()
+        t2 = time.time()
+        # finishPopUpDialogBox("Filtering fnish", "Work done")
     else : 
         data = loadData("save.json")
         activity_dict, sub_seq_list, ref_seq_list, res_act = data["data"]
-    t2 = time.time()
+        t2 = time.time()
     print("Filtering finished in " + str(t2-t1) + " seconds.")
     action = askVariantToCheck(activity_dict, sub_seq_list, ref_seq_list, res_act)
     while action != "exit":
