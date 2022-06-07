@@ -10,6 +10,7 @@ from Bio import pairwise2
 import json
 import pandas as pd
 # import tkinter as tk
+import numpy  as np
 
 
 ################################################################################
@@ -117,23 +118,37 @@ def filter():
     ratioList = []
     nbNsuList = []
     nbActifList = []
+    nbMutationList = []
     nameList = list(activity_des.keys())
 
     for name in nsu_count_des.keys():
         if name not in nameList : nameList.append(name)
 
+    # azo_seq = all_designs["AZOARCUS"]
+    azo_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
     for name in nameList:
         nbActif =0
+        ref_seq = all_designs[name][3:]
         nbNsu = 0
         ratio = pd.NA
+        nbMut = lambda azo_seq, ref_seq: sum(ei != ej for ei, ej in zip(azo_seq, ref_seq))
+        # print(nbMut)
+        # print(nbMut(azo_seq, ref_seq))
+        # print(type(nbMut))
+        # print(ref_seq)
+        # print(azo_seq)
         if name in activity_des.keys() : nbActif= activity_des[name]
         if name in nsu_count_des.keys() : nbNsu= nsu_count_des[name]
         if nbActif > 0 and nbNsu > 0 : ratio = nbActif / nbNsu
         nbActifList.append(nbActif)
         nbNsuList.append(nbNsu)
         ratioList.append(ratio)
+        nbMutationList.append(nbMut(ref_seq, azo_seq))
 
-    csvData = {"referenceName":nameList, "nsuCountRead":nbNsuList, "actif_count": nbActifList, "activityRatio": ratioList}
+        # hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))/len(seqi)
+
+
+    csvData = {"referenceName":nameList, "nsuCountRead":nbNsuList, "actif_count": nbActifList, "activityRatio": ratioList, "nbMutation":nbMutationList}
     df = pd.DataFrame.from_dict(csvData)
     if not os.path.isdir("results_csv") : os.makedirs("results_csv")
     df.to_csv("results_csv/"+ settings["databaseFilePath"].split(".")[0].replace(".", "") + "_activity.csv", index=False,   sep=",")
@@ -205,6 +220,34 @@ def main():
     while action != "exit":
         action = askVariantToCheck(activity_dict, sub_seq_list, ref_seq_list, res_act)
 
+
+def minEditDistanceV2(s1, s2):
+# initialisation  of a matrix full of 0, len()+1, since first character is " ", therefore 0
+    matrix = np.zeros ((len(s1)+1, len(s2)+1)) 
+	# setting first column to the word, the length is +1 since first character is empty
+    matrix [0:len(s1)+1, 0] = [x for x in range (0, len(s1)+1)] 
+	# setting first row of matrix to the word, the length is +1 since the first character is empty
+    matrix [0,0: len(s2)+1] = [y for y in range (0, len(s2)+1)] 
+
+# iterating over columns in a row, starting from index 1, since  0 was previously preset
+    for x in range(1, len(s1)+1): # iterating rows, we start from 1 because 0 was preset before
+        for y in range(1, len(s2)+1): 			# if characters are equal, we do nothing
+			# checking if the char characters are equal, if yes, nothing happen
+            if s1[x-1] == s2[y-1]: 
+                matrix [x,y] = matrix[x-1,y-1]
+				# if they are different, checking which opperation is the least costly: substitution, deletion or insertion
+            else: 
+                matrix [x,y] = min(
+                    matrix[x-1,y] + 1,
+                    matrix[x-1,y-1] + 1,
+                    matrix[x,y-1] + 1
+                )
+	#printing the matrix
+    # print (matrix) 
+
+	# returning  the last element of the matrix, corresponding to our minimal edit distance
+
+    return (matrix[len(s1), len(s2)])
 
 if __name__ == '__main__':
     main()
