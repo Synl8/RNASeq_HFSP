@@ -15,25 +15,37 @@ def getFastaIntoDict(fasta):
 
 
 def cleanFasta(fastaFile, referenceDict):
-    threePrimeCleanerIdentifier = str.upper(settings["3primeCleanerIdentifier"])
-    fivePrimeCleanerIdentifier = str.upper(settings["3primeCleanerIdentifier"])
+    threePrimeCleanerIdentifier = str.upper(settings["3primeCleanerIdentifier"]).replace("U", "T")
+    fivePrimeCleanerIdentifier = str.upper(settings["3primeCleanerIdentifier"]).replace("U", "T")
     recordList = []
     nb5PrimeCleaned = 0
     nb3PrimeCleaned = 0
     for record in SeqIO.parse(fastaFile, "fasta"):
         id = record.id
         seq = str(record.seq)
-        seq = str.upper(seq)
+        seq = str.upper(seq).replace("U", "T")
         if "|" in id : id = id.split("|")[1]
+        # print(id)
 
         if threePrimeCleanerIdentifier in seq and not threePrimeCleanerIdentifier in referenceDict[id]:
+            # print(seq.find(threePrimeCleanerIdentifier))
+            # print(len(seq))
+            # print(len(threePrimeCleanerIdentifier))
+            # return
             seq= seq[seq.find(threePrimeCleanerIdentifier) + len(threePrimeCleanerIdentifier):]
+            # print(len(seq))
             nb3PrimeCleaned+=1
+            # return
 
-        if fivePrimeCleanerIdentifier in seq and not fivePrimeCleanerIdentifier in referenceDict[id]: 
-            # print(record.seq)
+        if fivePrimeCleanerIdentifier in seq and not fivePrimeCleanerIdentifier in referenceDict[id]:
+            # print("5prime")
+            # print(seq.find(fivePrimeCleanerIdentifier))
+            # print(len(seq))
+            # print(len(fivePrimeCleanerIdentifier)) 
             seq = seq[:seq.find(fivePrimeCleanerIdentifier)]
             nb5PrimeCleaned+=1
+            # print(len(seq))
+            # return
             # print("After cut of 5s")
             # print(record.seq)
             # return
@@ -41,19 +53,20 @@ def cleanFasta(fastaFile, referenceDict):
         record.seq = Seq(seq)
         recordList.append(record)
 
-    SeqIO.write(recordList, fastaFile.replace(".fa", "_cleaned.fa"), "fasta")
+    print(len(list(SeqIO.parse(fastaFile, "fasta"))))
+    print(SeqIO.write(recordList, fastaFile.replace(".fa", "_cleaned.fa"), "fasta"))
     print("in the file :", fastaFile)
     print(str(nb5PrimeCleaned) + " 5prime have been removed")
     print(str(nb3PrimeCleaned) + " 3prime have been removed")
 
 def cleanAlignementFasta(fastaFile, referenceDict):
-    threePrimeCleanerIdentifier =str.upper(settings["3primeCleanerIdentifier"])
-    fivePrimeCleanerIdentifier =str.upper(settings["3primeCleanerIdentifier"])
+    threePrimeCleanerIdentifier =str.upper(settings["3primeCleanerIdentifier"]).replace("U", "T")
+    fivePrimeCleanerIdentifier =str.upper(settings["3primeCleanerIdentifier"]).replace("U", "T")
     recordList = []
     nb5PrimeCleaned = 0
     nb3PrimeCleaned = 0
     for record in SeqIO.parse(fastaFile, "fasta"):
-        record.seq = Seq(str.upper(str(record.seq).replace("-", "")))
+        record.seq = Seq(str.upper(str(record.seq).replace("-", "").replace("U", "T")))
         # print(record.seq)
         id = record.id
         if "|" in id : id = id.split("|")[1]
@@ -65,7 +78,8 @@ def cleanAlignementFasta(fastaFile, referenceDict):
             nb3PrimeCleaned+=1
         recordList.append(record)
 
-    SeqIO.write(recordList, fastaFile.replace(".fa", "_cleaned.fa"), "fasta")
+    print(len(list(SeqIO.parse(fastaFile, "fasta"))))
+    print(SeqIO.write(recordList, fastaFile.replace(".fa", "_cleaned.fa"), "fasta"))
     print("in the file :", fastaFile)
     print(str(nb5PrimeCleaned) + " 5prime have been removed")
     print(str(nb3PrimeCleaned) + " 3prime have been removed")

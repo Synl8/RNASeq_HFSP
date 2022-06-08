@@ -75,17 +75,17 @@ def test_activity(args):
 
 # usefull global variables 
 all_designs = {n.split()[0]: seq for n, seq in read_fasta(settings["databaseFilePath"]).items()}
-sel_fa_nsu = {n.split()[0]: s for n, s in read_fasta(settings["SubFilePath"]).items()}
+sel_fa_nsu = {n.split()[0]: s for n, s in read_fasta(settings["cleanSubFilePath"]).items()}
 sel_nsu, sel_sub = defaultdict(lambda: []), defaultdict(lambda: [])
 
 def filter():
     # save reads from no-sub condition
-    for name, seq in read_fasta(settings["NSubFilePath"]).items():
+    for name, seq in read_fasta(settings["cleanNSubFilePath"]).items():
         name_des = name.split("|")[1]
         sel_nsu[name_des] += [seq]
 
     # save active reads
-    sub_seq_list = list(read_fasta(settings["SubFilePath"]).items())
+    sub_seq_list = list(read_fasta(settings["cleanSubFilePath"]).items())
     ref_seq_list = []
 
     for name, seq in sub_seq_list:
@@ -124,19 +124,13 @@ def filter():
     for name in nsu_count_des.keys():
         if name not in nameList : nameList.append(name)
 
-    # azo_seq = all_designs["AZOARCUS"]
-    azo_seq = "CCUUGCGCCGGGAAACCACGCAAGGGAUGGUGUCAAAUUCGGCGAAACCUAAGCGCCCGCCCGGGCGUAUGGCAACGCCGAGCCAAGCUUCGGCGCCUGCGCCGAUGAAGGUGUAGAGACUAGACGGCACCCACCUAAGGCAAACGCUAUGGUGAAGGCAUAGUCCAGGGAGUGGCGAAAGUCACACAAACCG"
+    azo_seq = str.upper(all_designs["AZOARCUS"]).replace("U", "T")
     for name in nameList:
         nbActif =0
-        ref_seq = all_designs[name][3:]
+        ref_seq = str.upper(all_designs[name]).replace("U", "T")
         nbNsu = 0
         ratio = pd.NA
         nbMut = lambda azo_seq, ref_seq: sum(ei != ej for ei, ej in zip(azo_seq, ref_seq))
-        # print(nbMut)
-        # print(nbMut(azo_seq, ref_seq))
-        # print(type(nbMut))
-        # print(ref_seq)
-        # print(azo_seq)
         if name in activity_des.keys() : nbActif= activity_des[name]
         if name in nsu_count_des.keys() : nbNsu= nsu_count_des[name]
         if nbActif > 0 and nbNsu > 0 : ratio = nbActif / nbNsu
@@ -145,11 +139,11 @@ def filter():
         ratioList.append(ratio)
         nbMutationList.append(nbMut(ref_seq, azo_seq))
 
-        # hamming = lambda seqi, seqj: sum(ei != ej for ei, ej in zip(seqi, seqj))/len(seqi)
 
 
     csvData = {"referenceName":nameList, "nsuCountRead":nbNsuList, "actif_count": nbActifList, "activityRatio": ratioList, "nbMutation":nbMutationList}
     df = pd.DataFrame.from_dict(csvData)
+    df = df[df["activityRatio"] != pd.NA]
     if not os.path.isdir("results_csv") : os.makedirs("results_csv")
     df.to_csv("results_csv/"+ settings["databaseFilePath"].split(".")[0].replace(".", "") + "_activity.csv", index=False,   sep=",")
     saveData({"data":(activity_des, sub_seq_list, ref_seq_list, res_act)}, "save.json")
