@@ -60,10 +60,10 @@ def test_if_sub(seq):
 
 def test_activity(args):
     ref_seq, seq_x_ = args
-    seq_x = seq_x_.replace("-", "")
+    seq_x = seq_x_.replace("-", "").replace("U", "T")
     if test_if_sub(seq_x):
         try:
-            ref_seq += settings["exon"]+ settings["sub2"]
+            seq_x = seq_x[:seq_x.find("GGAACTTCAAATATCTTCGG")]
             alig = pairwise2.align.globalms(ref_seq, seq_x, 2, -2, -4, -1, penalize_end_gaps=False)[0]
         except: 
             return False
