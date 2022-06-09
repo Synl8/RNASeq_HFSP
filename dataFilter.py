@@ -32,18 +32,6 @@ def loadData(file):
         data = json.load(json_file)
         return data
 
-
-
-# def finishPopUpDialogBox(msg, title):
-    # root = tk.Tk()
-    # root.title(title)
-    # label = ttk.Label(root, text=msg)
-    # label.pack(side="top", fill="x", pady=10)
-    # B1 = tk.Button(root, text="Okay", command = root.destroy)
-    # B1.pack()
-    # popup.mainloop()
-    
-
 def read_fasta(infile):
     "read fasta files, return a dictionary"
     results = {}
@@ -119,6 +107,7 @@ def filter():
     nbNsuList = []
     nbActifList = []
     nbMutationList = []
+    G_testList= []
     nameList = list(activity_des.keys())
 
     for name in nsu_count_des.keys():
@@ -138,12 +127,13 @@ def filter():
         nbNsuList.append(nbNsu)
         ratioList.append(ratio)
         nbMutationList.append(nbMut(ref_seq, azo_seq))
+        G_testList.append(re.search("[G]{3,8}$", ref_seq) is not None)
 
 
 
-    csvData = {"VariantName":nameList, "nsubCountRead":nbNsuList, "subCountRead": nbActifList, "ActRate": ratioList, "Nb_Mut":nbMutationList}
+    csvData = {"VariantName":nameList, "nsubCountRead":nbNsuList, "subCountRead": nbActifList, "ActRate": ratioList, "Nb_Mut":nbMutationList, "G_test":G_testList}
     df = pd.DataFrame.from_dict(csvData)
-    df = df[df["activityRatio"] != pd.NA]
+    df = df[df["ActRate"] != pd.NA]
     if not os.path.isdir("results_csv") : os.makedirs("results_csv")
     df.to_csv("results_csv/"+ settings["databaseFilePath"].split(".")[0].replace(".", "") + "_activity.csv", index=False,   sep=",")
     saveData({"data":(activity_des, sub_seq_list, ref_seq_list, res_act)}, "save.json")
