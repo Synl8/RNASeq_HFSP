@@ -11,6 +11,7 @@ settings = {
 "sub2": "AACTTCAAATATCTTCGGAACTCA",
 "3primeCleanerIdentifier" : "GATCGGAAGAGCACA",
 "5primeCleanerIdentifier" : "gtgactggagttcagacgtgtgctcttccgatc",
+"G_test" : "[G]{5,10}$",
 }
 
 

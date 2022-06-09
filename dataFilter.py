@@ -127,7 +127,7 @@ def filter():
         nbNsuList.append(nbNsu)
         ratioList.append(ratio)
         nbMutationList.append(nbMut(ref_seq, azo_seq))
-        G_testList.append(re.search("[G]{4,8}$", ref_seq) is not None)
+        G_testList.append(re.search(settings["G_test"], ref_seq) is not None)
 
 
 
