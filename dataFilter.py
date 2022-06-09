@@ -141,7 +141,7 @@ def filter():
 
 
 
-    csvData = {"referenceName":nameList, "nsuCountRead":nbNsuList, "actif_count": nbActifList, "activityRatio": ratioList, "nbMutation":nbMutationList}
+    csvData = {"VariantName":nameList, "nsubCountRead":nbNsuList, "subCountRead": nbActifList, "ActRate": ratioList, "Nb_Mut":nbMutationList}
     df = pd.DataFrame.from_dict(csvData)
     df = df[df["activityRatio"] != pd.NA]
     if not os.path.isdir("results_csv") : os.makedirs("results_csv")
