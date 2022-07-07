@@ -1,0 +1,19 @@
+Experiment_Name,RNASeq2_CL,,
+Date,10/12/2021,,
+PhiX, 20o/O,,
+,,,
+Index_ID,Index_sequence,Sample_name1,Sample_name2
+i01,ATCACG,AAP_S_25uM,
+i02,CGATGT,AAP_S_5uM ,AAP_S_25uM_polyA_SMART-Seq_Yeast_PAP
+i03,TTAGGC,AAP_S_2-5uM,AAP_S_5uM_SMART-Seq
+i04,TGACCA,AAP_S_1uM,AAP_S_25uM_polyA_SMART-Seq_Ecoli_PAP
+i05,ACAGTG,AAP_S_0-25uM,AAP_no_S_SMART-Seq
+i06,GCCAAT,AAP no S,
+i07,CAGATC,AAP_S_25uM_polyA_Yeast_PAP,
+i08,ACTTGA,pool_0_no_S,
+i09,GATCAG,pool_0_S_0-5uM,
+i10,TAGCTT,pool_0_S_5uM,
+i11,GGCTAC,pool_0_S_25uM,
+i12,CTTGTA,pool_0_S_25uM_polyA_Yeast_PAP,
+i13,AGTCAA,pool_1_no_S,
+i14,AGTTCC,pool_1_S_25uM,
